@@ -1,6 +1,8 @@
 package krt170130;
 
 
+import javax.xml.transform.sax.SAXSource;
+
 public class Num  implements Comparable<Num> {
 
     static long defaultBase = 10;  // Change as needed
@@ -106,6 +108,7 @@ public class Num  implements Comparable<Num> {
         while(idx1 < alen) {
             arr[index++] = a1[idx1++];
         }
+        System.out.println();
         Num res = new Num();
         res.arr = arr;
         res.len = index;
@@ -221,7 +224,11 @@ public class Num  implements Comparable<Num> {
 
     // return a%b
     public static Num mod(Num a, Num b) {
-        return null;
+        if (b.compareMagnitude(new Num(0)) == 0)
+            return null;
+        Num c = divide(a,b);
+        c = subtract(a,product(c,b));
+        return c;
     }
 
     // Use binary search
@@ -290,7 +297,6 @@ public class Num  implements Comparable<Num> {
     public String toString() {
 
         // TO-DO Handle base change as well
-
         String result = "";
         for (int i=0;i<this.len;i++) {
             result = String.valueOf(this.arr[i]) + result;
@@ -323,6 +329,7 @@ public class Num  implements Comparable<Num> {
         res.len = this.len;
         res.base = this .base;
         res.isNegative = this.isNegative;
+        res.removeTrailingZeros();
         return res;
     }
 
@@ -343,8 +350,6 @@ public class Num  implements Comparable<Num> {
 
 
     public static void main(String[] args) {
-        Num a = new Num(-10);
-        Num b = new Num(11);
-        System.out.println(divide(a,b).toString());
+        
     }
 }
