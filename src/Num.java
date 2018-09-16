@@ -71,7 +71,17 @@ public class Num  implements Comparable<Num> {
         c.arr = arr;
         c.len = index;
         c.base = a.base;
+        c.removeTrailingZeros();
         return c;
+    }
+
+    private void removeTrailingZeros() {
+        int i;
+        for (i = this.len - 1; i>=0 ; i--) {
+            if (this.arr[i] !=0 )
+                break;
+        }
+        this.len  = i == -1 ? 1 : i+1;
     }
 
     private static Num subtractUtil(Num a, Num b) {
@@ -100,6 +110,7 @@ public class Num  implements Comparable<Num> {
         res.arr = arr;
         res.len = index;
         res.base = a.base;
+        res.removeTrailingZeros();
         return res;
     }
 
@@ -147,26 +158,32 @@ public class Num  implements Comparable<Num> {
     }
 
     public static Num product(Num a, Num b) {
-        long[] arr = new long[a.len + b.len + 1];
-        int i=0, j=0;
-        long carry = 0;
-        for (i=0;i<a.len;i++) {
-            for (j=0;j<b.len;j++) {
-                long sum = carry + a.arr[i] * b.arr[j] + arr[i+j];
-                carry = sum / a.base;
-                arr[i+j] = sum % a.base;
-            }
+        if (a.compareTo(new Num(0)) == 0 || b.compareTo(new Num(0)) == 0) {
+            return new Num(0);
         }
-        int len = a.len + b.len;
-        if (carry >= 1) {
-            arr[i + j] += carry;
-            len += 1;
+        long[] arr = new long[a.len + b.len];
+        int idx1 = 0;
+        int idx2;
+        for (int i=0;i<a.len;i++) {
+            long n1 = a.arr[i];
+            long carry = 0;
+            idx2 = 0 ;
+            for (int j=0;j<b.len;j++) {
+                long n2 = b.arr[j];
+                long sum = n1 * n2 + arr[i+j] + carry;
+                carry = sum / a.base;
+                arr[i+j] = sum %a.base;
+                idx2++;
+            }
+            if(carry > 0 ) arr[idx1 + idx2] += carry;
+            idx1++;
         }
         Num result = new Num();
-        result.len = len;
+        result.len = a.len+b.len;
         result.base = a.base;
         result.arr = arr;
         result.isNegative = a.isNegative ^ b.isNegative;
+        result.removeTrailingZeros();
         return result;
     }
 
@@ -181,8 +198,11 @@ public class Num  implements Comparable<Num> {
         Num right = a;
         while(left.compareMagnitude(right) <= 0) {
             Num mid = addUtil(left,right).by2();
-            System.out.println(product(b,mid));
-            System.out.println(product(b, add(mid, new Num(1))));
+            mid.removeTrailingZeros();
+//            System.out.println(mid.toString());
+//            System.out.println(b.toString());
+//            System.out.println(product(b, mid).toString());
+//            System.out.println(product(b, add(mid, new Num(1))));
             if ((product(b, mid).compareMagnitude(a) == 0 || product(b, mid).compareMagnitude(a) == -1) && product(b, add(mid, new Num(1))).compareMagnitude(a) == 1) {
                 mid.isNegative = a.isNegative ^ b.isNegative;
 
@@ -194,7 +214,6 @@ public class Num  implements Comparable<Num> {
             else {
                 right = mid;
             }
-            System.out.println(left.toString() + " : " + mid.toString() + " : " + right.toString());
         }
         return null;
     }
@@ -312,7 +331,7 @@ public class Num  implements Comparable<Num> {
     public static Num evaluatePostfix(String[] expr) {
         return null;
     }
-    
+
     // Evaluate an expression in infix and return resulting number
     // Each string is one of: "*", "+", "-", "/", "%", "^", "(", ")", "0", or
     // a number: [1-9][0-9]*.  There is no unary minus operator.
@@ -324,7 +343,7 @@ public class Num  implements Comparable<Num> {
 
     public static void main(String[] args) {
         Num a = new Num(10);
-        Num b = new Num(-10);
-        System.out.println(add(a,b).toString());
+        Num b = new Num(11);
+        System.out.println(divide(a,b).toString());
     }
 }
