@@ -194,6 +194,7 @@ public class Num  implements Comparable<Num> {
 
     // Use binary search to calculate a/b
     public static Num divide(Num a, Num b) {
+        if (a.compareMagnitude(b) == -1) return new Num(0);
         Num left = new Num(0);
         Num right = a;
         while(left.compareMagnitude(right) <= 0) {
@@ -342,7 +343,7 @@ public class Num  implements Comparable<Num> {
 
 
     public static void main(String[] args) {
-        Num a = new Num(10);
+        Num a = new Num(-10);
         Num b = new Num(11);
         System.out.println(divide(a,b).toString());
     }
