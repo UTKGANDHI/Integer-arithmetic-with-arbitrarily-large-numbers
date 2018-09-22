@@ -1,7 +1,8 @@
 package krt170130;
 
-
-import javax.xml.transform.sax.SAXSource;
+import java.util.HashMap;
+import java.util.Scanner;
+import java.util.Stack;
 
 public class Num  implements Comparable<Num> {
 
@@ -19,10 +20,8 @@ public class Num  implements Comparable<Num> {
             len++;
         }
     }
-
-    public Num(long x) {
-
-        // TO-DO change it to use Num methods instead
+    public Num (long x, long base) {
+        this.base = base;
         if (x < 0) {
             this.isNegative = true;
             x*= -1;
@@ -40,6 +39,9 @@ public class Num  implements Comparable<Num> {
             this.len++;
             x /= this.base;
         }
+    }
+    public Num(long x) {
+        this(x, defaultBase);
     }
 
     public Num() {
@@ -191,8 +193,19 @@ public class Num  implements Comparable<Num> {
     }
 
     // Use divide and conquer
+    // To-do handle cases like n is zero
     public static Num power(Num a, long n) {
-        return null;
+        if (n == 0)
+            return new Num (1);
+        Num result = new Num(1);
+        while(n > 0) {
+            if (n % 2 == 1) {
+                result = product(result, a);
+            }
+            n = n >> 2;
+            result = product(result, result);
+        }
+        return result;
     }
 
     // Use binary search to calculate a/b
@@ -203,10 +216,6 @@ public class Num  implements Comparable<Num> {
         while(left.compareMagnitude(right) <= 0) {
             Num mid = addUtil(left,right).by2();
             mid.removeTrailingZeros();
-//            System.out.println(mid.toString());
-//            System.out.println(b.toString());
-//            System.out.println(product(b, mid).toString());
-//            System.out.println(product(b, add(mid, new Num(1))));
             if ((product(b, mid).compareMagnitude(a) == 0 || product(b, mid).compareMagnitude(a) == -1) && product(b, add(mid, new Num(1))).compareMagnitude(a) == 1) {
                 mid.isNegative = a.isNegative ^ b.isNegative;
 
@@ -297,9 +306,10 @@ public class Num  implements Comparable<Num> {
     public String toString() {
 
         // TO-DO Handle base change as well
+        Num ret = this.convertBase(10);
         String result = "";
-        for (int i=0;i<this.len;i++) {
-            result = String.valueOf(this.arr[i]) + result;
+        for (int i=0;i<ret.len;i++) {
+            result = String.valueOf(ret.arr[i]) + result;
         }
         return this.isNegative ? "-"+result : result;
 
@@ -309,7 +319,11 @@ public class Num  implements Comparable<Num> {
 
     // Return number equal to "this" number, in base=newBase
     public Num convertBase(int newBase) {
-        return null;
+        Num result = new Num(this.arr[len - 1], newBase);
+        for (int i=len-1;i>0;i--) {
+            result = add(product(result, new Num(this.base, newBase)),new Num(this.arr[i-1], newBase));
+        }
+        return result;
     }
 
     // Divide by 2, for using in binary search
@@ -318,10 +332,10 @@ public class Num  implements Comparable<Num> {
         int idx = this.len - 1;
         long carry = 0;
         while (idx>=0) {
-            long val;
-            val = (this.base * carry + this.arr[idx] ) / 2;
-            carry = this.arr[idx] % 2;
-            resultArray[idx] = val;
+            long val = (this.base * carry + this.arr[idx] );
+            long toput =  val / 2;
+            carry = val % 2;
+            resultArray[idx] = toput;
             idx--;
         }
         Num res = new Num();
@@ -337,19 +351,94 @@ public class Num  implements Comparable<Num> {
     // Each string is one of: "*", "+", "-", "/", "%", "^", "0", or
     // a number: [1-9][0-9]*.  There is no unary minus operator.
     public static Num evaluatePostfix(String[] expr) {
-        return null;
+        Stack <Num> operands = new Stack <>();
+        for (String exp: expr) {
+            if (!isOperator(exp)) {
+                operands.push(new Num(exp));
+            }
+            else {
+                Num b = operands.pop();
+                Num a = operands.pop();
+                operands.push(evalExpr(a,b,exp));
+            }
+        }
+        return operands.peek();
     }
 
     // Evaluate an expression in infix and return resulting number
     // Each string is one of: "*", "+", "-", "/", "%", "^", "(", ")", "0", or
     // a number: [1-9][0-9]*.  There is no unary minus operator.
     public static Num evaluateInfix(String[] expr) {
-        return null;
+        Stack <Num> operands = new Stack<>();
+        Stack <String> operator = new Stack<>();
+        HashMap<String, Integer> priority = new HashMap<>();
+        priority.put("+",0);
+        priority.put("-",0);
+        priority.put("*",1);
+        priority.put("/",1);
+        priority.put("%",2);
+        priority.put("^",2);
+        priority.put("(",-1);
+
+        for (String exp: expr) {
+            if (!isOperator(exp)) {
+                operands.push(new Num(exp));
+            }
+            else if (exp.equals("("))
+                operator.push(exp);
+            else if (exp.equals(")")) {
+                while(!operator.isEmpty() && operator.peek() != "(") {
+                    Num b = operands.pop();
+                    Num a = operands.pop();
+                    String opr = operator.pop();
+                    operands.push(evalExpr(a,b,opr));
+                }
+                operator.pop();
+            }
+            else {
+                while(!operator.isEmpty() && priority.get(exp) <= priority.get(operator.peek())) {
+                    Num b = operands.pop();
+                    Num a = operands.pop();
+                    String opr = operator.pop();
+                    operands.push(evalExpr(a, b, opr));
+                }
+                operator.push(exp);
+            }
+        }
+        while(!operator.isEmpty()) {
+            Num b = operands.pop();
+            Num a = operands.pop();
+            String opr = operator.pop();
+            operands.push(evalExpr(a, b, opr));
+        }
+        return operands.peek();
     }
 
+    private static Num evalExpr(Num a, Num b, String opr) {
+        switch (opr){
+            case "+":
+                return add(a,b);
+            case "-":
+                return subtract(a,b);
+            case "*":
+                return product(a,b);
+            case "/":
+                return divide(a,b);
+            case "%":
+                return mod(a,b);
+            case "^":
+                return add(a,b);
+            default:
+                return null;
+        }
+    }
 
+    private static boolean isOperator(String exp) {
+        if (exp.equals("-") || exp.equals("+") || exp.equals("*") || exp.equals("/") || exp.equals("%") || exp.equals("^") || exp.equals("(") || exp.equals(")"))
+            return true;
+        return false;
+    }
 
     public static void main(String[] args) {
-        
     }
 }
