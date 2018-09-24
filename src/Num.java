@@ -1,8 +1,8 @@
 package krt170130;
 
-import java.util.HashMap;
-import java.util.Scanner;
-import java.util.Stack;
+import com.sun.javaws.exceptions.InvalidArgumentException;
+
+import java.util.*;
 
 public class Num  implements Comparable<Num> {
 
@@ -13,13 +13,26 @@ public class Num  implements Comparable<Num> {
     int len;  // actual number of elements of array that are used;  number is stored in arr[0..len-1]
 
     public Num(String s) {
-        arr = new long[10];
+        this.arr = new long[s.length()];
         int index = 0;
-        for (int i=0;i<s.length();i++) {
+        int limit = 0;
+        if (s.charAt(0) == '-') {
+            this.isNegative = true;
+            limit++;
+        }
+
+        for (int i=s.length() - 1;i>=limit;i--) {
             arr[index++] = s.charAt(i) - '0';
             len++;
         }
+        this.base = 10;
+        Num numObj = this.convertBase(14);
+        this.base = numObj.base;
+        this.arr =  numObj.arr;
+        this.isNegative = numObj.isNegative;
+        this.len = numObj.len;
     }
+
     public Num (long x, long base) {
         this.base = base;
         if (x < 0) {
@@ -27,7 +40,7 @@ public class Num  implements Comparable<Num> {
             x*= -1;
         }
 
-        this.arr = new long[10];
+        this.arr = new long[1000];
         if (x == 0) {
             this.len = 1;
             return;
@@ -40,6 +53,7 @@ public class Num  implements Comparable<Num> {
             x /= this.base;
         }
     }
+
     public Num(long x) {
         this(x, defaultBase);
     }
@@ -92,8 +106,10 @@ public class Num  implements Comparable<Num> {
         long[] arr = new long[Math.max(a.arr.length, b.arr.length) + 1];
         int alen = a.len;
         int blen = b.len;
-        long[] a1 = a.arr;
-        long[] b1 = b.arr;
+        long[] a1= new long[a.arr.length];
+        long[] b1= new long[b.arr.length];
+        System.arraycopy(a.arr, 0, a1, 0, a.arr.length);
+        System.arraycopy(b.arr, 0, b1, 0, b.arr.length);
         int index = 0;
         int idx1 = 0;
         int idx2 = 0;
@@ -110,7 +126,6 @@ public class Num  implements Comparable<Num> {
         while(idx1 < alen) {
             arr[index++] = a1[idx1++];
         }
-        System.out.println();
         Num res = new Num();
         res.arr = arr;
         res.len = index;
@@ -193,23 +208,37 @@ public class Num  implements Comparable<Num> {
     }
 
     // Use divide and conquer
-    // To-do handle cases like n is zero
     public static Num power(Num a, long n) {
         if (n == 0)
             return new Num (1);
         Num result = new Num(1);
+        Num x = copy(a);
+
         while(n > 0) {
             if (n % 2 == 1) {
-                result = product(result, a);
+                result = product(result, x);
             }
-            n = n >> 2;
-            result = product(result, result);
+            n = n >> 1;
+            x = product(x, x);
         }
         return result;
     }
 
+    private static Num copy(Num a) {
+        Num retObj = new Num();
+        retObj.base = a.base;
+        retObj.arr = new long[a.arr.length];
+        System.arraycopy(a.arr,0,retObj.arr,0,a.arr.length);
+        retObj.isNegative = a.isNegative;
+        retObj.len = a.len;
+        return retObj;
+    }
+
+
     // Use binary search to calculate a/b
-    public static Num divide(Num a, Num b) {
+    public static Num divide(Num a, Num b) throws InvalidArgumentException {
+        if (b.compareMagnitude(new Num(0)) == 0)
+            throw new InvalidArgumentException(new String[]{"Division by zero"});
         if (a.compareMagnitude(b) == -1) return new Num(0);
         Num left = new Num(0);
         Num right = a;
@@ -232,7 +261,7 @@ public class Num  implements Comparable<Num> {
     }
 
     // return a%b
-    public static Num mod(Num a, Num b) {
+    public static Num mod(Num a, Num b) throws InvalidArgumentException {
         if (b.compareMagnitude(new Num(0)) == 0)
             return null;
         Num c = divide(a,b);
@@ -257,7 +286,6 @@ public class Num  implements Comparable<Num> {
     }
 
 
-    //Utility function to compare magnitude
     public int compareMagnitude (Num number) {
         if (this.len != number.len) {
             return this.len < number.len ? -1 : 1;
@@ -304,27 +332,34 @@ public class Num  implements Comparable<Num> {
 
     // Return number to a string in base 10
     public String toString() {
-
-        // TO-DO Handle base change as well
         Num ret = this.convertBase(10);
         String result = "";
         for (int i=0;i<ret.len;i++) {
             result = String.valueOf(ret.arr[i]) + result;
         }
         return this.isNegative ? "-"+result : result;
-
     }
 
     public long base() { return base; }
 
     // Return number equal to "this" number, in base=newBase
     public Num convertBase(int newBase) {
-        Num result = new Num(this.arr[len - 1], newBase);
-        for (int i=len-1;i>0;i--) {
+        Num result = new Num(this.arr[this.len - 1], newBase);
+        for (int i=this.len-1;i>0;i--) {
             result = add(product(result, new Num(this.base, newBase)),new Num(this.arr[i-1], newBase));
         }
         return result;
     }
+
+    // To-Do make it base agnostic
+
+    private static long numToLong(Num b) {
+        long result = b.arr[b.len - 1];
+        for (int i=b.len - 2;i>=0;i--)
+            result = result * defaultBase + b.arr[i];
+        return result;
+    }
+
 
     // Divide by 2, for using in binary search
     public Num by2() {
@@ -350,7 +385,7 @@ public class Num  implements Comparable<Num> {
     // Evaluate an expression in postfix and return resulting number
     // Each string is one of: "*", "+", "-", "/", "%", "^", "0", or
     // a number: [1-9][0-9]*.  There is no unary minus operator.
-    public static Num evaluatePostfix(String[] expr) {
+    public static Num evaluatePostfix(String[] expr) throws InvalidArgumentException {
         Stack <Num> operands = new Stack <>();
         for (String exp: expr) {
             if (!isOperator(exp)) {
@@ -368,53 +403,49 @@ public class Num  implements Comparable<Num> {
     // Evaluate an expression in infix and return resulting number
     // Each string is one of: "*", "+", "-", "/", "%", "^", "(", ")", "0", or
     // a number: [1-9][0-9]*.  There is no unary minus operator.
-    public static Num evaluateInfix(String[] expr) {
-        Stack <Num> operands = new Stack<>();
+    public static Num evaluateInfix(String[] expr) throws InvalidArgumentException {
+        Queue<String> outQueue = new LinkedList<>();
         Stack <String> operator = new Stack<>();
+
         HashMap<String, Integer> priority = new HashMap<>();
+
         priority.put("+",0);
         priority.put("-",0);
         priority.put("*",1);
         priority.put("/",1);
-        priority.put("%",2);
+        priority.put("%",1);
         priority.put("^",2);
         priority.put("(",-1);
 
         for (String exp: expr) {
             if (!isOperator(exp)) {
-                operands.push(new Num(exp));
+                outQueue.add(exp);
             }
             else if (exp.equals("("))
                 operator.push(exp);
             else if (exp.equals(")")) {
                 while(!operator.isEmpty() && operator.peek() != "(") {
-                    Num b = operands.pop();
-                    Num a = operands.pop();
-                    String opr = operator.pop();
-                    operands.push(evalExpr(a,b,opr));
+                    outQueue.add(operator.pop());
                 }
                 operator.pop();
             }
-            else {
-                while(!operator.isEmpty() && priority.get(exp) <= priority.get(operator.peek())) {
-                    Num b = operands.pop();
-                    Num a = operands.pop();
-                    String opr = operator.pop();
-                    operands.push(evalExpr(a, b, opr));
+            else if (isOperator(exp)) {
+                while( !operator.isEmpty() && ((priority.get(exp) < priority.get(operator.peek())) ||  (priority.get(exp) == priority.get(operator.peek()) && operator.peek() != "^")) && operator.peek() != "(" ) {
+                    outQueue.add(operator.pop());
                 }
                 operator.push(exp);
             }
         }
         while(!operator.isEmpty()) {
-            Num b = operands.pop();
-            Num a = operands.pop();
-            String opr = operator.pop();
-            operands.push(evalExpr(a, b, opr));
+            outQueue.add(operator.pop());
         }
-        return operands.peek();
+        String qarr[] = outQueue.toArray(new String[outQueue.size()]);
+        for (String s : qarr) System.out.print(s + " ");
+        System.out.println();
+        return evaluatePostfix(qarr);
     }
 
-    private static Num evalExpr(Num a, Num b, String opr) {
+    private static Num evalExpr(Num a, Num b, String opr) throws InvalidArgumentException {
         switch (opr){
             case "+":
                 return add(a,b);
@@ -427,7 +458,7 @@ public class Num  implements Comparable<Num> {
             case "%":
                 return mod(a,b);
             case "^":
-                return add(a,b);
+                return power(a,numToLong(b));
             default:
                 return null;
         }
@@ -439,6 +470,11 @@ public class Num  implements Comparable<Num> {
         return false;
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws InvalidArgumentException {
+        Num.defaultBase = 14;
+        Num x = new Num(14);
+        x.printList();
+//        new Num("35").printList();
+
     }
 }
